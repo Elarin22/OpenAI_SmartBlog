@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block title %}회원가입 - Smart Blog{% endblock %}
+
+{% block content %}
+<div class="auth-background">
+    <div class="container py-5">
+        <div class="row justify-content-center min-vh-100 align-items-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card shadow-lg border-0 auth-card">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="auth-icon-wrapper">
+                                <i class="fas fa-user-plus fa-3x text-white"></i>
+                            </div>
+                            <h2 class="fw-bold text-dark">회원가입</h2>
+                            <p class="text-muted">Smart Blog와 함께 시작하세요</p>
+                        </div>
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <!-- 사용자명 필드 -->
+                            <div class="mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">
+                                    <i class="fas fa-user me-2 text-primary"></i>{{ form.username.label }}
+                                </label>
+                                <input type="text" class="form-control form-control-lg auth-input" 
+                                       id="{{ form.username.id_for_label }}" 
+                                       name="{{ form.username.name }}" 
+                                       value="{{ form.username.value|default:'' }}"
+                                       placeholder="사용자명을 입력하세요" required>
+                                <!-- 에러 메시지 추가 -->
+                                {% if form.username.errors %}
+                                    <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                                {% if form.username.help_text %}
+                                    <div class="form-text">{{ form.username.help_text }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 이메일 필드 -->
+                            <div class="mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    <i class="fas fa-envelope me-2 text-primary"></i>{{ form.email.label }}
+                                </label>
+                                <input type="email" class="form-control form-control-lg auth-input" 
+                                       id="{{ form.email.id_for_label }}" 
+                                       name="{{ form.email.name }}" 
+                                       value="{{ form.email.value|default:'' }}"
+                                       placeholder="이메일을 입력하세요" required>
+                                <!-- 에러 메시지 추가 -->
+                                {% if form.email.errors %}
+                                    <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 비밀번호 필드 -->
+                            <div class="mb-3">
+                                <label for="{{ form.password1.id_for_label }}" class="form-label">
+                                    <i class="fas fa-lock me-2 text-primary"></i>{{ form.password1.label }}
+                                </label>
+                                <input type="password" class="form-control form-control-lg auth-input" 
+                                       id="{{ form.password1.id_for_label }}" 
+                                       name="{{ form.password1.name }}"
+                                       placeholder="비밀번호를 입력하세요" required>
+                                <!-- 에러 메시지 추가 -->
+                                {% if form.password1.errors %}
+                                    <div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>
+                                {% endif %}
+                                {% if form.password1.help_text %}
+                                    <div class="form-text">{{ form.password1.help_text }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- 비밀번호 확인 필드 -->
+                            <div class="mb-4">
+                                <label for="{{ form.password2.id_for_label }}" class="form-label">
+                                    <i class="fas fa-lock me-2 text-primary"></i>{{ form.password2.label }}
+                                </label>
+                                <input type="password" class="form-control form-control-lg auth-input" 
+                                       id="{{ form.password2.id_for_label }}" 
+                                       name="{{ form.password2.name }}"
+                                       placeholder="비밀번호를 다시 입력하세요" required>
+                                <!-- 에러 메시지 추가 -->
+                                {% if form.password2.errors %}
+                                    <div class="text-danger small mt-1">{{ form.password2.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    {{ form.non_field_errors.0 }}
+                                </div>
+                            {% endif %}
+                            
+                            <button type="submit" class="btn btn-primary btn-lg w-100 mb-3 auth-btn">
+                                <i class="fas fa-user-plus me-2"></i>회원가입
+                            </button>
+                            
+                            <div class="text-center">
+                                <span class="text-muted">이미 계정이 있으신가요?</span>
+                                <a href="{% url 'login' %}" class="text-decoration-none fw-bold text-primary">
+                                    로그인
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.auth-background {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-background::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(249, 168, 212, 0.1) 0%, transparent 50%);
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+}
+
+.auth-card {
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+.auth-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(249, 168, 212, 0.3);
+}
+
+.auth-icon-wrapper {
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    box-shadow: 0 10px 30px rgba(249, 168, 212, 0.4);
+}
+
+.auth-input {
+    border: 2px solid rgba(249, 168, 212, 0.3);
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+}
+
+.auth-input:focus {
+    border-color: #f9a8d4;
+    box-shadow: 0 0 0 0.2rem rgba(249, 168, 212, 0.25);
+    background: white;
+    transform: translateY(-2px);
+}
+
+.auth-btn {
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    border: none;
+    border-radius: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.auth-btn:hover {
+    background: linear-gradient(135deg, #ec4899, #be185d);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(249, 168, 212, 0.4);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 0.75rem;
+}
+
+.text-primary {
+    color: #ec4899 !important;
+}
+
+.form-text {
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .auth-background { padding: 2rem 1rem; }
+    .auth-card { margin: 1rem; }
+    .card-body { padding: 2rem !important; }
+    .auth-icon-wrapper { width: 60px; height: 60px; }
+    .auth-icon-wrapper i { font-size: 1.5rem !important; }
+}
+</style>
+{% endblock %}
