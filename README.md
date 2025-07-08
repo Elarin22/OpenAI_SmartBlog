@@ -47,12 +47,13 @@ SMARTBLOG/
 ├── 📁 blog/                         # 블로그 메인 앱
 │   ├── 📄 admin.py                  # 관리자 설정
 │   ├── 📄 ai_service.py             # OpenAI API 서비스 모듈
-│   ├── 📄 ai_urls.py                # AI 기능 URL (미사용)
+│   ├── 📄 ai_urls.py                # AI 기능 URL
 │   ├── 📄 ai_views.py               # AI 기능 API 뷰
 │   ├── 📄 apps.py                   # 앱 설정
 │   ├── 📄 models.py                 # Post, Comment, Tag, Like, AIUsageLog
 │   ├── 📄 urls.py                   # 블로그 URL 라우팅
 │   └── 📄 views.py                  # 블로그 CRUD, 댓글, 좋아요 뷰
+│
 ├── 📁 media/                        # 업로드된 파일
 │   ├── 📁 posts/                    # 게시글 이미지
 │   └── 📁 profiles/                 # 프로필 이미지
