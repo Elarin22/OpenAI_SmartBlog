@@ -1,0 +1,837 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - Smart Blog{% endblock %}
+
+{% block content %}
+<div class="blog-background">
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <!-- 게시글 헤더 -->
+                <article class="card border-0 shadow-lg mb-4 blog-card">
+                    <!-- 이미지 -->
+                    {% if post.image %}
+                    <div class="blog-image-wrapper">
+                        <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 300px; object-fit: cover;">
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body p-4">
+                        <!-- 메타 정보 -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge bg-primary fs-6">{{ post.get_category_display }}</span>
+                                {% if post.is_ai_assisted %}
+                                    <span class="ai-badge">
+                                        <i class="fas fa-robot"></i>AI 도움
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <!-- 좋아요 버튼 -->
+                                {% if user.is_authenticated %}
+                                    <button class="btn btn-outline-danger btn-sm like-btn" 
+                                            data-post-id="{{ post.pk }}"
+                                            data-is-liked="{% if is_liked %}true{% else %}false{% endif %}">
+                                        <i class="{% if is_liked %}fas{% else %}far{% endif %} fa-heart me-1"></i>
+                                        <span class="like-count">{{ like_count }}</span>
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">
+                                        <i class="far fa-heart me-1 text-pink"></i>{{ like_count }}
+                                    </span>
+                                {% endif %}
+                                
+                                <!-- 조회수 -->
+                                <div class="text-muted small">
+                                    <i class="fas fa-eye me-1 text-pink"></i>{{ post.views }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 제목 -->
+                        <h1 class="fw-bold mb-3">{{ post.title }}</h1>
+                        
+                        <!-- 작성자 정보 -->
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                            <div class="d-flex align-items-center">
+                                <div class="author-avatar">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">
+                                        <a href="{% url 'user_profile' post.author.id %}" class="text-decoration-none text-dark">
+                                            {{ post.author.username }}
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">{{ post.created_at|date:"Y년 m월 d일" }}</small>
+                                </div>
+                            </div>
+                            
+                            <!-- 작성자만 보이는 수정/삭제 버튼 -->
+                            {% if user == post.author %}
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'post_update' post.pk %}">
+                                        <i class="fas fa-edit me-2"></i>수정
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="{% url 'post_delete' post.pk %}">
+                                        <i class="fas fa-trash me-2"></i>삭제
+                                    </a></li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 본문 내용 -->
+                        <div class="post-content">
+                            {{ post.content|linebreaks }}
+                        </div>
+                        
+                        <!-- AI 요약 (있는 경우) -->
+                        {% if post.summary %}
+                        <div class="alert alert-info mt-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-robot me-2"></i>
+                                <strong>AI 요약</strong>
+                            </div>
+                            <p class="mb-0">{{ post.summary }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- 태그 -->
+                        {% if post.tags.all %}
+                        <div class="mt-4 pt-3 border-top">
+                            <h6 class="text-muted mb-2">태그</h6>
+                            {% for tag in post.tags.all %}
+                            <span class="badge bg-light text-dark me-1 mb-1">#{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </article>
+
+                <!-- 댓글 섹션 -->
+                <div class="card border-0 shadow-lg blog-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="fw-bold">
+                                <i class="fas fa-comments me-2 text-pink"></i>
+                                댓글 <span id="commentCount" class="badge bg-primary">0</span>
+                            </h4>
+                        </div>
+
+                        <!-- 댓글 작성 폼 (로그인한 사용자만) -->
+                        {% if user.is_authenticated %}
+                        <div class="comment-form-wrapper mb-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <form id="commentForm">
+                                        {% csrf_token %}
+                                        <div class="mb-3">
+                                            <textarea class="form-control" 
+                                                      id="commentContent" 
+                                                      rows="3" 
+                                                      placeholder="댓글을 작성해주세요..." 
+                                                      required></textarea>
+                                        </div>
+                                        <div class="d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-paper-plane me-2"></i>댓글 작성
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            댓글을 작성하려면 <a href="{% url 'login' %}" class="alert-link">로그인</a>해주세요.
+                        </div>
+                        {% endif %}
+
+                        <!-- 댓글 목록 -->
+                        <div id="commentsList">
+                            <!-- AJAX로 동적으로 로드될 댓글들 -->
+                        </div>
+
+                        <!-- 댓글이 없을 때 -->
+                        <div id="noComments" class="text-center py-4" style="display: none;">
+                            <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">아직 댓글이 없습니다. 첫 번째 댓글을 작성해보세요!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 뒤로가기 버튼 -->
+                <div class="mt-4 text-center">
+                    <a href="{% url 'post_list' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>목록으로
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 대댓글 작성 모달 -->
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">답글 작성</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="replyForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="parentCommentId">
+                    <div class="mb-3">
+                        <label class="form-label">답글 내용</label>
+                        <textarea class="form-control" 
+                                  id="replyContent" 
+                                  rows="3" 
+                                  placeholder="답글을 작성해주세요..." 
+                                  required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="submitReply">
+                    <i class="fas fa-reply me-2"></i>답글 작성
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.blog-background {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.blog-card {
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    z-index: 10;
+}
+
+.author-avatar {
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    box-shadow: 0 4px 15px rgba(249, 168, 212, 0.4);
+}
+
+.text-pink {
+    color: #ec4899 !important;
+}
+
+.ai-badge {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    color: white;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.post-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #2d3748;
+}
+
+.post-content p {
+    margin-bottom: 1.5rem;
+}
+
+/* 좋아요 버튼 스타일 */
+.like-btn {
+    transition: all 0.3s ease;
+    border-radius: 20px;
+    font-weight: 500;
+    min-width: 70px;
+}
+
+.like-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.like-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 하트 아이콘 애니메이션 */
+.like-btn i {
+    transition: all 0.2s ease;
+}
+
+.like-btn:hover i {
+    transform: scale(1.1);
+}
+
+/* 좋아요 카운트 */
+.like-count {
+    font-weight: 600;
+    margin-left: 0.25rem;
+}
+
+/* 댓글 스타일 */
+.comment-item {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(249, 168, 212, 0.2);
+}
+
+.comment-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(249, 168, 212, 0.2);
+}
+
+.reply-item {
+    margin-left: 2rem;
+    border-left: 3px solid #f9a8d4;
+    background: rgba(249, 168, 212, 0.05);
+}
+
+.comment-author {
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    margin-right: 1rem;
+}
+
+.comment-form-wrapper .card {
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.comment-actions {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.comment-item:hover .comment-actions {
+    opacity: 1;
+}
+
+/* 댓글 수정 폼 스타일 */
+.comment-item textarea {
+    border: 2px solid rgba(249, 168, 212, 0.3);
+    border-radius: 8px;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.comment-item textarea:focus {
+    border-color: #f9a8d4;
+    box-shadow: 0 0 0 0.2rem rgba(249, 168, 212, 0.25);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+/* 토스트 애니메이션 */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* 반응형 조정 */
+@media (max-width: 768px) {
+    .like-btn {
+        font-size: 0.9rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .reply-item {
+        margin-left: 1rem;
+    }
+    
+    .comment-actions {
+        opacity: 1; /* 모바일에서는 항상 표시 */
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const postId = {{ post.pk }};
+    const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
+    
+    // 페이지 로드 시 댓글 불러오기
+    loadComments();
+    
+    // 좋아요 버튼 처리
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const postId = this.dataset.postId;
+            const isLiked = this.dataset.isLiked === 'true';
+            
+            // 버튼 비활성화 (중복 클릭 방지)
+            this.disabled = true;
+            
+            fetch(`/blog/like/${postId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 아이콘 업데이트
+                    const icon = this.querySelector('i');
+                    const countSpan = this.querySelector('.like-count');
+                    
+                    if (data.is_liked) {
+                        // 좋아요 상태
+                        icon.className = 'fas fa-heart me-1';
+                        this.className = 'btn btn-danger btn-sm like-btn';
+                        this.dataset.isLiked = 'true';
+                    } else {
+                        // 좋아요 취소 상태
+                        icon.className = 'far fa-heart me-1';
+                        this.className = 'btn btn-outline-danger btn-sm like-btn';
+                        this.dataset.isLiked = 'false';
+                    }
+                    
+                    // 카운트 업데이트
+                    if (countSpan) {
+                        countSpan.textContent = data.like_count;
+                    }
+                    
+                    // 성공 메시지 표시
+                    showToast(data.message, 'success');
+                } else {
+                    alert('오류: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('좋아요 처리 에러:', error);
+                alert('요청 처리 중 오류가 발생했습니다.');
+            })
+            .finally(() => {
+                // 버튼 다시 활성화
+                this.disabled = false;
+            });
+        });
+    });
+    
+    // 댓글 작성 폼 처리
+    document.getElementById('commentForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitComment();
+    });
+    
+    // 답글 작성 버튼 처리
+    document.getElementById('submitReply')?.addEventListener('click', function() {
+        submitReply();
+    });
+    
+    // CSRF 토큰 가져오기 함수
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // 토스트 메시지 표시 함수
+    function showToast(message, type = 'info') {
+        const toastHtml = `
+            <div class="toast-message ${type}" style="
+                position: fixed; 
+                top: 20px; 
+                right: 20px; 
+                z-index: 9999; 
+                background: ${type === 'success' ? '#28a745' : '#007bff'}; 
+                color: white; 
+                padding: 1rem; 
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                animation: slideInRight 0.3s ease;
+            ">
+                ${message}
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', toastHtml);
+        
+        // 3초 후 자동 제거
+        setTimeout(() => {
+            const toast = document.querySelector('.toast-message');
+            if (toast) {
+                toast.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 3000);
+    }
+    
+    // 댓글 불러오기 함수
+    function loadComments() {
+        fetch(`/blog/comments/${postId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayComments(data.comments);
+                    // 댓글 수 업데이트
+                    document.getElementById('commentCount').textContent = data.total_count || data.comments.length;
+                }
+            })
+            .catch(error => {
+                console.error('댓글 로딩 에러:', error);
+            });
+    }
+    
+    // 댓글 표시 함수
+    function displayComments(comments) {
+        const commentsList = document.getElementById('commentsList');
+        const noComments = document.getElementById('noComments');
+        const commentCount = document.getElementById('commentCount');
+        
+        if (comments.length === 0) {
+            commentsList.innerHTML = '';
+            noComments.style.display = 'block';
+            commentCount.textContent = '0';
+            return;
+        }
+        
+        noComments.style.display = 'none';
+        commentCount.textContent = comments.length;
+        
+        // 댓글을 부모-자식 구조로 정리
+        const parentComments = comments.filter(c => !c.parent_id);
+        const childComments = comments.filter(c => c.parent_id);
+        
+        let html = '';
+        
+        parentComments.forEach(comment => {
+            html += renderComment(comment, false);
+            
+            // 대댓글 찾기
+            const replies = childComments.filter(c => c.parent_id === comment.id);
+            replies.forEach(reply => {
+                html += renderComment(reply, true);
+            });
+        });
+        
+        commentsList.innerHTML = html;
+        
+        // 이벤트 리스너 다시 바인딩
+        bindCommentEvents();
+    }
+    
+    // 댓글 HTML 렌더링
+    function renderComment(comment, isReply) {
+        const replyClass = isReply ? 'reply-item' : '';
+        const actionsHtml = comment.can_delete || comment.is_author ? `
+            <div class="comment-actions">
+                ${comment.is_author ? `
+                    <button class="btn btn-sm btn-outline-primary edit-comment me-1" data-comment-id="${comment.id}">
+                        <i class="fas fa-edit fa-sm"></i>
+                    </button>
+                ` : ''}
+                ${comment.can_delete ? `
+                    <button class="btn btn-sm btn-outline-danger delete-comment" data-comment-id="${comment.id}">
+                        <i class="fas fa-trash fa-sm"></i>
+                    </button>
+                ` : ''}
+            </div>
+        ` : '';
+        
+        const replyButtonHtml = !isReply && {{ user.is_authenticated|yesno:"true,false" }} ? `
+            <button class="btn btn-sm btn-outline-primary reply-btn" data-comment-id="${comment.id}">
+                <i class="fas fa-reply fa-sm"></i> 답글
+            </button>
+        ` : '';
+        
+        return `
+            <div class="comment-item ${replyClass}" data-comment-id="${comment.id}">
+                <div class="d-flex justify-content-between">
+                    <div class="d-flex w-100">
+                        <div class="comment-author">
+                            ${comment.author.charAt(0).toUpperCase()}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>${comment.author}</strong>
+                                    <small class="text-muted ms-2">${comment.created_at}</small>
+                                </div>
+                                ${actionsHtml}
+                            </div>
+                            <p class="mb-2">${comment.content}</p>
+                            <div class="d-flex gap-2">
+                                ${replyButtonHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 댓글 이벤트 바인딩
+    function bindCommentEvents() {
+        // 삭제 버튼
+        document.querySelectorAll('.delete-comment').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const commentId = this.dataset.commentId;
+                if (confirm('정말 삭제하시겠습니까?')) {
+                    deleteComment(commentId);
+                }
+            });
+        });
+
+        // 수정 버튼
+        document.querySelectorAll('.edit-comment').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const commentId = this.dataset.commentId;
+                startEditComment(commentId);
+            });
+        });
+        
+        // 답글 버튼
+        document.querySelectorAll('.reply-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const commentId = this.dataset.commentId;
+                showReplyModal(commentId);
+            });
+        });
+    }
+    
+    // 댓글 수정 시작
+    function startEditComment(commentId) {
+        const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+        const contentElement = commentElement.querySelector('p');
+        const originalContent = contentElement.textContent;
+
+        // 수정 폼으로 변경
+        contentElement.innerHTML = `
+            <textarea class="form-control mb-2" id="edit-content-${commentId}" rows="3">${originalContent}</textarea>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-success save-edit" data-comment-id="${commentId}">
+                    <i class="fas fa-save fa-sm"></i> 저장
+                </button>
+                <button class="btn btn-sm btn-secondary cancel-edit" data-comment-id="${commentId}" data-original="${originalContent}">
+                    <i class="fas fa-times fa-sm"></i> 취소
+                </button>
+            </div>
+        `;
+
+        // 수정 폼 이벤트 바인딩
+        bindEditEvents(commentId, originalContent);
+    }
+
+    // 수정 폼 이벤트 바인딩
+    function bindEditEvents(commentId, originalContent) {
+        // 저장 버튼
+        document.querySelector(`.save-edit[data-comment-id="${commentId}"]`).addEventListener('click', function() {
+            const newContent = document.getElementById(`edit-content-${commentId}`).value.trim();
+            if (newContent) {
+                updateComment(commentId, newContent);
+            } else {
+                alert('댓글 내용을 입력해주세요.');
+            }
+        });
+
+        // 취소 버튼
+        document.querySelector(`.cancel-edit[data-comment-id="${commentId}"]`).addEventListener('click', function() {
+            cancelEditComment(commentId, originalContent);
+        });
+    }
+
+    // 댓글 수정 취소
+    function cancelEditComment(commentId, originalContent) {
+        const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+        const contentElement = commentElement.querySelector('p');
+        contentElement.innerHTML = originalContent;
+    }
+
+    // 댓글 수정 API 호출
+    function updateComment(commentId, newContent) {
+        fetch(`/blog/comment/${commentId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                content: newContent
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 댓글 목록 새로고침
+                loadComments();
+                showToast('댓글이 수정되었습니다!', 'success');
+            } else {
+                alert('댓글 수정 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('댓글 수정 에러:', error);
+            alert('댓글 수정 중 오류가 발생했습니다.');
+        });
+    }
+    
+    // 댓글 작성
+    function submitComment() {
+        const content = document.getElementById('commentContent').value.trim();
+        
+        if (!content) {
+            alert('댓글 내용을 입력해주세요.');
+            return;
+        }
+        
+        fetch(`/blog/comment/${postId}/create/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('commentContent').value = '';
+                loadComments(); // 댓글 목록 새로고침
+                showToast('댓글이 작성되었습니다!', 'success');
+            } else {
+                alert('댓글 작성 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('댓글 작성 에러:', error);
+            alert('댓글 작성 중 오류가 발생했습니다.');
+        });
+    }
+    
+    // 답글 모달 표시
+    function showReplyModal(parentId) {
+        document.getElementById('parentCommentId').value = parentId;
+        document.getElementById('replyContent').value = '';
+        replyModal.show();
+    }
+    
+    // 답글 작성
+    function submitReply() {
+        const content = document.getElementById('replyContent').value.trim();
+        const parentId = document.getElementById('parentCommentId').value;
+        
+        if (!content) {
+            alert('답글 내용을 입력해주세요.');
+            return;
+        }
+        
+        fetch(`/blog/comment/${postId}/create/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                content: content,
+                parent_id: parentId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                replyModal.hide();
+                loadComments(); // 댓글 목록 새로고침
+                showToast('답글이 작성되었습니다!', 'success');
+            } else {
+                alert('답글 작성 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('답글 작성 에러:', error);
+            alert('답글 작성 중 오류가 발생했습니다.');
+        });
+    }
+    
+    // 댓글 삭제
+    function deleteComment(commentId) {
+        fetch(`/blog/comment/${commentId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loadComments(); // 댓글 목록 새로고침
+                showToast('댓글이 삭제되었습니다!', 'success');
+            } else {
+                alert('댓글 삭제 실패: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('댓글 삭제 에러:', error);
+            alert('댓글 삭제 중 오류가 발생했습니다.');
+        });
+    }
+});
+</script>
+{% endblock %}

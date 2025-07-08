@@ -1,0 +1,718 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.pk %}글 수정{% else %}새 글 작성{% endif %} - Smart Blog{% endblock %}
+
+{% block content %}
+<div class="blog-background">
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="card border-0 shadow-lg blog-card">
+                    <div class="card-header gradient-header text-white text-center py-4">
+                        <h2 class="fw-bold mb-0">
+                            <i class="fas fa-{% if form.instance.pk %}edit{% else %}plus{% endif %} me-2"></i>
+                            {% if form.instance.pk %}글 수정하기{% else %}새 글 작성하기{% endif %}
+                        </h2>
+                        <p class="mb-0 opacity-90">AI의 도움을 받아 멋진 글을 작성해보세요</p>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <form method="post" enctype="multipart/form-data" id="postForm">
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <!-- 왼쪽 영역: 폼 -->
+                                <div class="col-lg-8">
+                                    <!-- 제목 -->
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label for="id_title" class="form-label fw-semibold">
+                                                <i class="fas fa-heading me-2 text-primary"></i>제목
+                                            </label>
+                                            <div>
+                                                <button type="button" class="btn btn-outline-primary btn-sm me-1" id="suggestTitleBtn">
+                                                    <i class="fas fa-lightbulb me-1"></i>AI 제목 추천
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <input type="text" class="form-control form-control-lg" 
+                                               id="id_title" name="title" 
+                                               value="{{ form.title.value|default:'' }}"
+                                               placeholder="매력적인 제목을 입력하세요" required>
+                                        
+                                        <!-- 제목 추천 결과 -->
+                                        <div id="titleSuggestions" class="mt-2" style="display: none;">
+                                            <small class="text-muted">추천 제목을 클릭하여 선택하세요:</small>
+                                            <div id="titleList" class="mt-1"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 카테고리 -->
+                                    <div class="mb-4">
+                                        <label for="id_category" class="form-label fw-semibold">
+                                            <i class="fas fa-folder me-2 text-primary"></i>카테고리
+                                        </label>
+                                        <select class="form-select form-select-lg" id="id_category" name="category">
+                                            <option value="tech" {% if form.category.value == 'tech' %}selected{% endif %}>기술</option>
+                                            <option value="life" {% if form.category.value == 'life' %}selected{% endif %}>일상</option>
+                                            <option value="review" {% if form.category.value == 'review' %}selected{% endif %}>리뷰</option>
+                                            <option value="etc" {% if form.category.value == 'etc' %}selected{% endif %}>기타</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- 이미지 -->
+                                    <div class="mb-4">
+                                        <label for="id_image" class="form-label fw-semibold">
+                                            <i class="fas fa-image me-2 text-primary"></i>대표 이미지
+                                        </label>
+                                        <input type="file" class="form-control form-control-lg" 
+                                               id="id_image" name="image" accept="image/*">
+                                    </div>
+                                    
+                                    <!-- 본문 -->
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label for="id_content" class="form-label fw-semibold">
+                                                <i class="fas fa-edit me-2 text-primary"></i>본문
+                                            </label>
+                                            <div>
+                                                <button type="button" class="btn btn-outline-success btn-sm me-1" id="autoCompleteBtn">
+                                                    <i class="fas fa-magic me-1"></i>AI 자동완성
+                                                </button>
+                                                <button type="button" class="btn btn-outline-info btn-sm" id="generateSummaryBtn">
+                                                    <i class="fas fa-compress-alt me-1"></i>AI 요약
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <textarea class="form-control" 
+                                                  id="id_content" name="content" 
+                                                  rows="15" 
+                                                  placeholder="여기에 글을 작성하세요. AI가 도와드릴게요!" 
+                                                  required>{{ form.content.value|default:'' }}</textarea>
+                                    </div>
+                                    
+                                    <!-- 태그 -->
+                                    <div class="mb-4">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="form-label fw-semibold">
+                                                <i class="fas fa-tags me-2 text-primary"></i>태그
+                                            </label>
+                                            <button type="button" class="btn btn-outline-warning btn-sm" id="suggestTagsBtn">
+                                                <i class="fas fa-tag me-1"></i>AI 태그 추천
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Hidden input for tags -->
+                                        <input type="hidden" id="selectedTagIds" name="tags_data" value="">
+                                        
+                                        <!-- 현재 선택된 태그 표시 -->
+                                        <div class="mt-2">
+                                            <small class="text-muted">선택된 태그:</small>
+                                            <div id="selectedTags" class="mt-1">
+                                                <!-- 기존 태그들 표시 (수정 시) -->
+                                                {% if form.instance.pk and form.instance.tags.all %}
+                                                    {% for tag in form.instance.tags.all %}
+                                                        <span class="badge bg-primary me-1 mb-1 selected-tag" data-tag-id="{{ tag.id }}" data-tag-name="{{ tag.name }}">
+                                                            #{{ tag.name }}
+                                                            <i class="fas fa-times ms-1 remove-tag" style="cursor: pointer;"></i>
+                                                        </span>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 태그 추천 결과 -->
+                                        <div id="tagSuggestions" class="mt-2" style="display: none;">
+                                            <small class="text-muted">추천 태그 (클릭하여 선택):</small>
+                                            <div id="tagList" class="mt-1"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 오른쪽 영역: AI 기능 패널 -->
+                                <div class="col-lg-4">
+                                    <div class="ai-panel">
+                                        <h5 class="fw-bold mb-3">
+                                            <i class="fas fa-robot me-2 text-primary"></i>AI 도우미
+                                        </h5>
+                                        
+                                        <!-- AI 사용량 표시 -->
+                                        <div class="ai-usage-card mb-3">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span>AI 사용량</span>
+                                                <span class="badge bg-primary">{{ user.ai_usage_count|default:0 }}회</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 요약 결과 표시 -->
+                                        <div id="summaryResult" class="mt-3" style="display: none;">
+                                            <h6 class="fw-bold">AI 요약</h6>
+                                            <div class="summary-box p-3 border rounded">
+                                                <div id="summaryText"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 버튼 -->
+                            <div class="d-flex gap-3 justify-content-end mt-4">
+                                <a href="{% url 'post_list' %}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-times me-2"></i>취소
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-save me-2"></i>
+                                    {% if form.instance.pk %}수정 완료{% else %}글 발행{% endif %}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.blog-background {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%);
+    min-height: 100vh;
+}
+
+.blog-card {
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    overflow: hidden;
+}
+
+.gradient-header {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%) !important;
+    color: #374151 !important;
+    border: none;
+    position: relative;
+}
+
+.gradient-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.9) 0%, 
+        rgba(252, 231, 243, 0.8) 25%, 
+        rgba(249, 168, 212, 0.7) 50%, 
+        rgba(252, 231, 243, 0.8) 75%, 
+        rgba(255, 255, 255, 0.9) 100%);
+    z-index: 1;
+}
+
+.gradient-header h2,
+.gradient-header p {
+    position: relative;
+    z-index: 2;
+    color: #374151 !important;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.gradient-header i {
+    color: #ec4899 !important;
+}
+
+.ai-panel {
+    background: rgba(249, 168, 212, 0.1);
+    border-radius: 15px;
+    padding: 1.5rem;
+}
+
+.ai-usage-card {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.title-suggestion-item, .tag-suggestion-item {
+    display: inline-block;
+    background: rgba(236, 72, 153, 0.1);
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.title-suggestion-item:hover, .tag-suggestion-item:hover {
+    background: rgba(236, 72, 153, 0.2);
+    transform: translateY(-1px);
+}
+
+.selected-tag {
+    position: relative;
+}
+
+.remove-tag:hover {
+    color: #ff6b6b !important;
+    transform: scale(1.2);
+}
+
+.summary-box {
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #ec4899, #f9a8d4);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #db2777, #ec4899);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+}
+
+.form-label .text-primary {
+    color: #ec4899 !important;
+}
+
+.ai-panel .text-primary {
+    color: #ec4899 !important;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #ec4899, #f9a8d4) !important;
+}
+
+.ai-usage-card .badge.bg-primary {
+    background: linear-gradient(135deg, #ec4899, #f9a8d4) !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('페이지 로드 완료');
+    
+    let selectedTags = new Set();
+    
+    // CSRF 토큰 가져오기
+    function getCSRFToken() {
+        const token = document.querySelector('[name=csrfmiddlewaretoken]');
+        return token ? token.value : '';
+    }
+    
+    // 성공 메시지 표시
+    function showSuccessMessage(message) {
+        const toast = document.createElement('div');
+        toast.innerHTML = `
+            <div style="
+                position: fixed; 
+                top: 20px; 
+                right: 20px; 
+                z-index: 9999; 
+                background: #28a745; 
+                color: white; 
+                padding: 1rem 1.5rem; 
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            ">
+                ✅ ${message}
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // 제목 추천 결과 표시
+    function displayTitleSuggestions(titles) {
+        const container = document.getElementById('titleSuggestions');
+        const listContainer = document.getElementById('titleList');
+        
+        if (!container || !listContainer) {
+            alert('추천 제목:\n' + titles.join('\n\n클릭하려면 다시 버튼을 누르세요.'));
+            return;
+        }
+        
+        listContainer.innerHTML = '';
+        
+        titles.forEach(title => {
+            const item = document.createElement('div');
+            item.className = 'title-suggestion-item';
+            item.textContent = title;
+            item.style.cssText = `
+                background: rgba(236, 72, 153, 0.1);
+                border: 1px solid rgba(236, 72, 153, 0.3);
+                border-radius: 8px;
+                padding: 0.5rem 1rem;
+                margin: 0.25rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-block;
+            `;
+            
+            item.addEventListener('click', function() {
+                document.getElementById('id_title').value = title;
+                container.style.display = 'none';
+                showSuccessMessage('제목이 선택되었습니다!');
+            });
+            
+            item.addEventListener('mouseenter', function() {
+                this.style.background = 'rgba(236, 72, 153, 0.2)';
+            });
+            
+            item.addEventListener('mouseleave', function() {
+                this.style.background = 'rgba(236, 72, 153, 0.1)';
+            });
+            
+            listContainer.appendChild(item);
+        });
+        
+        container.style.display = 'block';
+    }
+    
+    // 태그 추천 결과 표시 (향상된 버전)
+    function displayTagSuggestions(tags) {
+        const container = document.getElementById('tagSuggestions');
+        const listContainer = document.getElementById('tagList');
+        
+        if (!container || !listContainer) {
+            alert('추천 태그:\n#' + tags.join('\n#'));
+            return;
+        }
+        
+        listContainer.innerHTML = '';
+        
+        tags.forEach(tagName => {
+            const item = document.createElement('span');
+            item.className = 'tag-suggestion-item';
+            item.textContent = '#' + tagName;
+            item.dataset.tagName = tagName; // 태그 이름을 data 속성으로 저장
+            item.style.cssText = `
+                background: rgba(236, 72, 153, 0.1);
+                border: 1px solid rgba(236, 72, 153, 0.3);
+                border-radius: 8px;
+                padding: 0.5rem 1rem;
+                margin: 0.25rem;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-block;
+            `;
+            
+            // 이미 선택된 태그인지 확인
+            const isAlreadySelected = Array.from(selectedTags).some(tagStr => {
+                const tagData = JSON.parse(tagStr);
+                return tagData.name === tagName;
+            });
+            
+            if (isAlreadySelected) {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+                item.style.background = 'rgba(156, 163, 175, 0.1)';
+            } else {
+                // 호버 효과 추가
+                item.addEventListener('mouseenter', function() {
+                    if (this.style.pointerEvents !== 'none') {
+                        this.style.background = 'rgba(236, 72, 153, 0.2)';
+                    }
+                });
+                
+                item.addEventListener('mouseleave', function() {
+                    if (this.style.pointerEvents !== 'none') {
+                        this.style.background = 'rgba(236, 72, 153, 0.1)';
+                    }
+                });
+            }
+            
+            item.addEventListener('click', function() {
+                if (this.style.pointerEvents !== 'none') {
+                    addTag(tagName);
+                    // 이 아이템을 비활성화
+                    this.style.opacity = '0.5';
+                    this.style.pointerEvents = 'none';
+                    this.style.background = 'rgba(156, 163, 175, 0.1)';
+                    showSuccessMessage('태그가 추가되었습니다!');
+                }
+            });
+            
+            listContainer.appendChild(item);
+        });
+        
+        container.style.display = 'block';
+    }
+    
+    // 태그 추가 함수 (향상된 버전)
+    function addTag(tagName) {
+        const tagData = {
+            id: null,
+            name: tagName
+        };
+        
+        const tagKey = JSON.stringify(tagData);
+        if (selectedTags.has(tagKey)) return;
+        
+        selectedTags.add(tagKey);
+        
+        const selectedTagsContainer = document.getElementById('selectedTags');
+        if (selectedTagsContainer) {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'badge bg-primary me-1 mb-1 selected-tag';
+            tagElement.dataset.tagName = tagName; // 태그 이름 저장
+            tagElement.innerHTML = `
+                #${tagName}
+                <i class="fas fa-times ms-1 remove-tag" style="cursor: pointer;"></i>
+            `;
+            
+            // 태그 제거 이벤트
+            tagElement.querySelector('.remove-tag').addEventListener('click', function() {
+                selectedTags.delete(tagKey);
+                tagElement.remove();
+                updateHiddenTagInput();
+                
+                // 추천 목록에서 해당 태그를 다시 활성화
+                reactivateTagInSuggestions(tagName);
+                
+                showSuccessMessage('태그가 제거되었습니다!');
+            });
+            
+            selectedTagsContainer.appendChild(tagElement);
+            updateHiddenTagInput();
+        }
+    }
+    
+    // 태그 추천 목록에서 태그 다시 활성화
+    function reactivateTagInSuggestions(tagName) {
+        const suggestionItems = document.querySelectorAll('.tag-suggestion-item');
+        suggestionItems.forEach(item => {
+            if (item.dataset.tagName === tagName) {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+                item.style.background = 'rgba(236, 72, 153, 0.1)';
+                
+                // 호버 효과도 다시 추가
+                item.onmouseenter = function() {
+                    if (this.style.pointerEvents !== 'none') {
+                        this.style.background = 'rgba(236, 72, 153, 0.2)';
+                    }
+                };
+                
+                item.onmouseleave = function() {
+                    if (this.style.pointerEvents !== 'none') {
+                        this.style.background = 'rgba(236, 72, 153, 0.1)';
+                    }
+                };
+            }
+        });
+    }
+    
+    // 숨겨진 태그 입력 필드 업데이트
+    function updateHiddenTagInput() {
+        const hiddenInput = document.getElementById('selectedTagIds');
+        if (hiddenInput) {
+            const tagData = Array.from(selectedTags).map(tagStr => JSON.parse(tagStr));
+            hiddenInput.value = JSON.stringify(tagData);
+        }
+    }
+    
+    // 제목 추천 버튼
+    const titleBtn = document.getElementById('suggestTitleBtn');
+    if (titleBtn) {
+        titleBtn.addEventListener('click', function() {
+            const content = document.getElementById('id_content').value.trim();
+            
+            if (!content || content.length < 20) {
+                alert(`더 많은 내용을 작성한 후 제목을 추천받아보세요. (현재: ${content.length}자, 최소: 20자)`);
+                return;
+            }
+            
+            titleBtn.disabled = true;
+            titleBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>AI 작업중...';
+            
+            fetch('/blog/ai/suggest-title/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({ content: content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.success) {
+                    displayTitleSuggestions(data.titles);
+                    showSuccessMessage('AI가 제목을 추천했습니다! 💡');
+                } else {
+                    alert('제목 추천 실패: ' + (data?.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                alert('제목 추천 서비스에 문제가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                titleBtn.disabled = false;
+                titleBtn.innerHTML = '<i class="fas fa-lightbulb me-1"></i>AI 제목 추천';
+            });
+        });
+    }
+    
+    // 자동완성 버튼
+    const autoBtn = document.getElementById('autoCompleteBtn');
+    if (autoBtn) {
+        autoBtn.addEventListener('click', function() {
+            const contentField = document.getElementById('id_content');
+            const content = contentField.value.trim();
+            
+            if (!content || content.length < 30) {
+                alert(`더 많은 내용을 작성한 후 자동완성을 사용해보세요. (현재: ${content.length}자, 최소: 30자)`);
+                return;
+            }
+            
+            autoBtn.disabled = true;
+            autoBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>AI 작업중...';
+            
+            fetch('/blog/ai/complete-content/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    content: content,
+                    style: 'friendly'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.success) {
+                    const newContent = contentField.value + '\n\n' + data.completion;
+                    contentField.value = newContent;
+                    contentField.focus();
+                    contentField.setSelectionRange(newContent.length, newContent.length);
+                    showSuccessMessage('AI가 글을 이어서 작성했습니다! 📝');
+                } else {
+                    alert('자동완성 실패: ' + (data?.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                alert('자동완성 서비스에 문제가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                autoBtn.disabled = false;
+                autoBtn.innerHTML = '<i class="fas fa-magic me-1"></i>AI 자동완성';
+            });
+        });
+    }
+    
+    // 태그 추천 버튼
+    const tagBtn = document.getElementById('suggestTagsBtn');
+    if (tagBtn) {
+        tagBtn.addEventListener('click', function() {
+            const title = document.getElementById('id_title').value.trim();
+            const content = document.getElementById('id_content').value.trim();
+            
+            if (!title && !content) {
+                alert('제목이나 내용을 작성한 후 태그를 추천받아보세요.');
+                return;
+            }
+            
+            tagBtn.disabled = true;
+            tagBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>AI 작업중...';
+            
+            fetch('/blog/ai/suggest-tags/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    title: title,
+                    content: content
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.success) {
+                    displayTagSuggestions(data.tags);
+                    showSuccessMessage('AI가 태그를 추천했습니다! 🏷️');
+                } else {
+                    alert('태그 추천 실패: ' + (data?.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                alert('태그 추천 서비스에 문제가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                tagBtn.disabled = false;
+                tagBtn.innerHTML = '<i class="fas fa-tag me-1"></i>AI 태그 추천';
+            });
+        });
+    }
+    
+    // 요약 생성 버튼
+    const summaryBtn = document.getElementById('generateSummaryBtn');
+    if (summaryBtn) {
+        summaryBtn.addEventListener('click', function() {
+            const content = document.getElementById('id_content').value.trim();
+            
+            if (!content || content.length < 200) {
+                alert(`요약하기에는 내용이 너무 짧습니다. (현재: ${content.length}자, 최소: 200자)`);
+                return;
+            }
+            
+            summaryBtn.disabled = true;
+            summaryBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>AI 작업중...';
+            
+            fetch('/blog/ai/generate-summary/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({ content: content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.success) {
+                    const summaryTextElement = document.getElementById('summaryText');
+                    const summaryResultElement = document.getElementById('summaryResult');
+                    
+                    if (summaryTextElement && summaryResultElement) {
+                        summaryTextElement.textContent = data.summary;
+                        summaryResultElement.style.display = 'block';
+                    } else {
+                        alert('AI 요약 결과:\n\n' + data.summary);
+                    }
+                    showSuccessMessage('AI가 글을 요약했습니다! 📋');
+                } else {
+                    alert('요약 생성 실패: ' + (data?.error || '알 수 없는 오류'));
+                }
+            })
+            .catch(error => {
+                alert('요약 생성 서비스에 문제가 발생했습니다: ' + error.message);
+            })
+            .finally(() => {
+                summaryBtn.disabled = false;
+                summaryBtn.innerHTML = '<i class="fas fa-compress-alt me-1"></i>AI 요약';
+            });
+        });
+    }
+    
+    // 기존 태그 로드 (수정 시)
+    document.querySelectorAll('.selected-tag').forEach(tag => {
+        const tagId = tag.dataset.tagId;
+        const tagName = tag.dataset.tagName;
+        if (tagId && tagName) {
+            selectedTags.add(JSON.stringify({id: tagId, name: tagName}));
+        }
+    });
+    
+    updateHiddenTagInput();
+    
+    console.log('모든 AI 버튼 이벤트 등록 완료');
+});
+</script>
+{% endblock %}

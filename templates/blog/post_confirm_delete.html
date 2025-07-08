@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}글 삭제 - Smart Blog{% endblock %}
+
+{% block content %}
+<div class="blog-background">
+    <div class="container py-5">
+        <div class="row justify-content-center min-vh-100 align-items-center">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-lg blog-card">
+                    <div class="card-body p-5 text-center">
+                        <div class="mb-4">
+                            <div class="warning-icon-wrapper">
+                                <i class="fas fa-exclamation-triangle fa-4x text-white mb-3"></i>
+                            </div>
+                            <h2 class="fw-bold text-danger">글 삭제</h2>
+                            <p class="text-muted">정말로 이 글을 삭제하시겠습니까?</p>
+                        </div>
+                        
+                        <div class="post-preview mb-4">
+                            <h6 class="fw-bold text-dark">{{ post.title }}</h6>
+                            <small class="text-muted">
+                                {{ post.author.username }} · {{ post.created_at|date:"Y년 m월 d일" }}
+                            </small>
+                            <p class="mb-0 mt-2 text-muted">
+                                {{ post.content|truncatewords:15 }}
+                            </p>
+                        </div>
+                        
+                        <div class="alert alert-warning text-start">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <strong>주의:</strong> 삭제된 글은 복구할 수 없습니다.
+                        </div>
+                        
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <div class="d-flex gap-3 justify-content-center">
+                                <a href="{% url 'post_detail' post.pk %}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-arrow-left me-2"></i>취소
+                                </a>
+                                <button type="submit" class="btn btn-danger btn-lg">
+                                    <i class="fas fa-trash me-2"></i>삭제하기
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.blog-background {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.blog-background::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(249, 168, 212, 0.1) 0%, transparent 50%);
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+}
+
+.blog-card {
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    z-index: 10;
+}
+
+.warning-icon-wrapper {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0% { box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4); }
+    50% { box-shadow: 0 15px 40px rgba(245, 158, 11, 0.6); }
+    100% { box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4); }
+}
+
+.post-preview {
+    background: rgba(249, 168, 212, 0.1);
+    border: 1px solid rgba(249, 168, 212, 0.3);
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: start;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    border-radius: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #6b7280;
+    color: #6b7280;
+    border-radius: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-secondary:hover {
+    background: #6b7280;
+    color: white;
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .blog-background { padding: 1rem; }
+    .card-body { padding: 2rem !important; }
+    .warning-icon-wrapper { width: 80px; height: 80px; }
+    .warning-icon-wrapper i { font-size: 2rem !important; }
+}
+</style>
+{% endblock %}

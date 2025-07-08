@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+
+{% block title %}블로그 - Smart Blog{% endblock %}
+
+{% block content %}
+<div class="blog-background">
+    <div class="container py-5">
+        <!-- Header Section -->
+        <div class="row mb-5"style="position: relative; z-index: 20;">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="fw-bold mb-2">
+                            <i class="fas fa-blog me-3 text-pink"></i>블로그
+                        </h1>
+                        <p class="text-muted mb-0">AI와 함께 작성된 다양한 이야기들을 만나보세요</p>
+                    </div>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'post_create' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>새 글 작성
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- 검색 및 필터 -->
+                <div class="card border-0 shadow-lg mb-4 blog-card">
+                    <div class="card-body">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search text-pink"></i>
+                                    </span>
+                                    <input type="text" class="form-control" name="search" value="{{ search_query }}" placeholder="제목, 내용, 태그로 검색...">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" name="category">
+                                    <option value="">모든 카테고리</option>
+                                    {% for value, display in categories %}
+                                    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <!-- 정렬 -->
+                            <div class="col-md-3">
+                                <select class="form-select" name="sort">
+                                    {% for value, display in sort_options %}
+                                    <option value="{{ value }}" {% if selected_sort == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-filter me-1"></i>적용
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Posts Grid -->
+        {% if posts %}
+        <div class="row g-4">
+            {% for post in posts %}
+            <div class="col-lg-6 col-xl-4">
+                <article class="card h-100 border-0 shadow-lg blog-card">
+                    {% if post.image %}
+                    <div class="post-image-wrapper">
+                        <img src="{{ post.image.url }}" class="card-img-top" alt="{{ post.title }}">
+                    </div>
+                    {% else %}
+                    <div class="post-placeholder">
+                        <i class="fas fa-image fa-3x text-white opacity-50"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-2">
+                            <span class="badge bg-primary">{{ post.get_category_display }}</span>
+                            {% if post.is_ai_assisted %}
+                                <span class="ai-badge ms-2">
+                                    <i class="fas fa-robot"></i>AI
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <h5 class="card-title fw-bold mb-3">
+                            <a href="{% url 'post_detail' post.pk %}" class="text-decoration-none text-dark">
+                                {{ post.title }}
+                            </a>
+                        </h5>
+                        
+                        <p class="card-text text-muted mb-3 flex-grow-1">
+                            {{ post.content|truncatewords:20 }}
+                        </p>
+                        
+                        <!-- Tags -->
+                        {% if post.tags.all %}
+                        <div class="mb-3">
+                            {% for tag in post.tags.all|slice:":3" %}
+                            <span class="badge bg-light text-dark me-1">#{{ tag.name }}</span>
+                            {% endfor %}
+                            {% if post.tags.count > 3 %}
+                            <span class="badge bg-light text-muted">+{{ post.tags.count|add:"-3" }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Meta Info -->
+                        <div class="d-flex justify-content-between align-items-center text-muted small">
+                            <div>
+                                <i class="fas fa-user me-1 text-pink"></i>{{ post.author.username }}
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- 좋아요 버튼/표시 -->
+                                {% if user.is_authenticated %}
+                                    <button class="btn btn-sm p-0 like-btn border-0" 
+                                            data-post-id="{{ post.pk }}"
+                                            data-is-liked="{% if post.user_liked %}true{% else %}false{% endif %}"
+                                            style="background: none;">
+                                        <i class="{% if post.user_liked %}fas text-danger{% else %}far text-muted{% endif %} fa-heart me-1"></i>
+                                        <span class="like-count">{{ post.like_count }}</span>
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">
+                                        <i class="far fa-heart me-1"></i>{{ post.like_count }}
+                                    </span>
+                                {% endif %}
+                                
+                                <span>
+                                    <i class="fas fa-eye me-1 text-pink"></i>{{ post.views }}
+                                </span>
+                                <span>
+                                    <i class="fas fa-calendar me-1 text-pink"></i>{{ post.created_at|date:"m/d" }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav class="mt-5">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <div class="card border-0 shadow-lg blog-card">
+                <div class="card-body p-5">
+                    <i class="fas fa-file-alt fa-4x text-pink mb-4"></i>
+                    <h3 class="text-muted mb-3">아직 작성된 글이 없습니다</h3>
+                    <p class="text-muted mb-4">첫 번째 글을 작성해보세요!</p>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'post_create' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>첫 글 작성하기
+                    </a>
+                    {% else %}
+                    <a href="{% url 'signup' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-user-plus me-2"></i>회원가입하고 시작하기
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.blog-background {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.blog-background::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(249, 168, 212, 0.1) 0%, transparent 50%);
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+}
+
+.blog-card {
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+.blog-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(249, 168, 212, 0.3);
+}
+
+.post-image-wrapper {
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+    height: 200px;
+}
+
+.post-image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.post-image-wrapper:hover img {
+    transform: scale(1.05);
+}
+
+.post-placeholder {
+    height: 200px;
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px 20px 0 0;
+}
+
+.text-pink {
+    color: #ec4899 !important;
+}
+
+.ai-badge {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    color: white;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.4rem 0.7rem;
+    border-radius: 8px;
+}
+
+.page-link {
+    border-radius: 8px;
+    margin: 0 2px;
+    border: none;
+    color: #ec4899;
+    font-weight: 500;
+}
+
+.page-link:hover {
+    background-color: #ec4899;
+    color: white;
+}
+
+.page-item.active .page-link {
+    background-color: #ec4899;
+    border-color: #ec4899;
+}
+
+/* 좋아요 버튼 스타일 */
+.like-btn {
+    transition: all 0.3s ease;
+    border-radius: 15px;
+    font-weight: 500;
+}
+
+.like-btn:hover {
+    transform: scale(1.1);
+    background: rgba(220, 53, 69, 0.1) !important;
+}
+
+.like-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 하트 아이콘 애니메이션 */
+.like-btn i {
+    transition: all 0.2s ease;
+}
+
+.like-btn:hover i {
+    transform: scale(1.2);
+    color: #dc3545 !important;
+}
+
+/* 좋아요 카운트 */
+.like-count {
+    font-weight: 600;
+    margin-left: 0.25rem;
+    color: #6c757d;
+}
+
+.like-btn:hover .like-count {
+    color: #dc3545 !important;
+}
+
+/* 토스트 애니메이션 */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* 반응형 조정 */
+@media (max-width: 768px) {
+    .blog-background { padding: 1rem; }
+    .post-image-wrapper, .post-placeholder { height: 150px; }
+    .card-body { padding: 1.5rem !important; }
+    .like-btn {
+        font-size: 0.8rem;
+        padding: 0.125rem 0.25rem;
+    }
+}
+</style>
+
+<script>
+// 좋아요 버튼 처리
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation(); // 카드 클릭 이벤트 방지
+            
+            const postId = this.dataset.postId;
+            const isLiked = this.dataset.isLiked === 'true';
+            
+            // 버튼 비활성화 (중복 클릭 방지)
+            this.disabled = true;
+            
+            fetch(`/blog/like/${postId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 아이콘 업데이트
+                    const icon = this.querySelector('i');
+                    const countSpan = this.querySelector('.like-count');
+                    
+                    if (data.is_liked) {
+                        // 좋아요 상태
+                        icon.className = 'fas fa-heart me-1 text-danger';
+                        this.dataset.isLiked = 'true';
+                    } else {
+                        // 좋아요 취소 상태
+                        icon.className = 'far fa-heart me-1 text-muted';
+                        this.dataset.isLiked = 'false';
+                    }
+                    
+                    // 카운트 업데이트
+                    if (countSpan) {
+                        countSpan.textContent = data.like_count;
+                    }
+                    
+                    // 성공 메시지 표시
+                    showToast(data.message, 'success');
+                } else {
+                    alert('오류: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('좋아요 처리 에러:', error);
+                alert('요청 처리 중 오류가 발생했습니다.');
+            })
+            .finally(() => {
+                // 버튼 다시 활성화
+                this.disabled = false;
+            });
+        });
+    });
+});
+
+// CSRF 토큰 가져오기 함수
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 토스트 메시지 함수
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.innerHTML = `
+        <div style="
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 9999; 
+            background: ${type === 'success' ? '#28a745' : '#007bff'}; 
+            color: white; 
+            padding: 1rem 1.5rem; 
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
+            animation: slideInRight 0.3s ease;
+            font-weight: 500;
+        ">
+            <i class="fas fa-heart me-2"></i>${message}
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+</script>
+
+{% endblock %}
