@@ -1,0 +1,403 @@
+{% extends 'base.html' %}
+
+{% block title %}Not Found 404 - Smart Blog{% endblock %}
+
+{% block content %}
+<div class="error-background">
+    <div class="container py-5">
+        <div class="row justify-content-center min-vh-100 align-items-center">
+            <div class="col-lg-8 col-xl-6">
+                <div class="card border-0 shadow-lg error-card">
+                    <div class="card-body text-center p-5">
+                        <!-- 귀여운 404 아이콘 -->
+                        <div class="error-icon-wrapper mb-4">
+                            <div class="cute-robot">
+                                <i class="fas fa-robot fa-4x text-white"></i>
+                                <div class="robot-eyes">
+                                    <div class="eye left-eye"></div>
+                                    <div class="eye right-eye"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 404 메시지 -->
+                        <div class="floating-number">404</div>
+                        <h2 class="h3 fw-bold text-dark mb-3">🔍 앗! 페이지가 숨바꼭질 중이에요!</h2>
+                        
+                        <!-- 재미있는 메시지들 -->
+                        <div class="fun-messages mb-4">
+                            <div class="message-card">
+                                <i class="fas fa-lightbulb text-warning me-2"></i>
+                                <span>혹시 URL을 잘못 입력하셨나요?</span>
+                            </div>
+                            <div class="message-card">
+                                <i class="fas fa-magic text-purple me-2"></i>
+                                <span>아니면 페이지가 마법에 걸렸을 수도...</span>
+                            </div>
+                            <div class="message-card">
+                                <i class="fas fa-heart text-danger me-2"></i>
+                                <span>괜찮아요! 다른 멋진 글들이 기다리고 있어요!</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 행동 버튼들 -->
+                        <div class="action-buttons">
+                            <a href="{% url 'main' %}" class="btn btn-primary btn-lg me-3 mb-2">
+                                <i class="fas fa-home me-2"></i>메인으로 돌아가기
+                            </a>
+                            <a href="{% url 'post_list' %}" class="btn btn-outline-primary btn-lg me-3 mb-2">
+                                <i class="fas fa-blog me-2"></i>블로그 둘러보기
+                            </a>
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'post_create' %}" class="btn btn-outline-success btn-lg mb-2">
+                                <i class="fas fa-plus me-2"></i>새 글 작성하기
+                            </a>
+                            {% else %}
+                            <a href="{% url 'signup' %}" class="btn btn-outline-success btn-lg mb-2">
+                                <i class="fas fa-user-plus me-2"></i>회원가입하기
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 귀여운 팁 -->
+                        <div class="cute-tip mt-4">
+                            <div class="tip-card">
+                                <i class="fas fa-robot text-pink me-2"></i>
+                                <strong>AI Tip:</strong> 검색 기능을 사용해서 원하는 글을 찾아보세요!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 떠다니는 요소들 -->
+                <div class="floating-elements">
+                    <div class="floating-icon icon-1">
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <div class="floating-icon icon-2">
+                        <i class="fas fa-heart text-danger"></i>
+                    </div>
+                    <div class="floating-icon icon-3">
+                        <i class="fas fa-lightbulb text-warning"></i>
+                    </div>
+                    <div class="floating-icon icon-4">
+                        <i class="fas fa-rocket text-primary"></i>
+                    </div>
+                    <div class="floating-icon icon-5">
+                        <i class="fas fa-magic text-purple"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-background {
+    background: linear-gradient(135deg, #ffffff 0%, #fce7f3 25%, #f9a8d4 50%, #fce7f3 75%, #ffffff 100%);
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.error-background::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(249, 168, 212, 0.15) 0%, transparent 50%);
+    animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(30px, -30px) rotate(120deg); }
+    66% { transform: translate(-20px, 20px) rotate(240deg); }
+}
+
+.error-card {
+    border-radius: 25px;
+    backdrop-filter: blur(15px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(249, 168, 212, 0.3);
+    position: relative;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+
+.error-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 25px 50px rgba(249, 168, 212, 0.4);
+}
+
+.error-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.floating-number {
+    font-size: 4rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-20px); }
+    60% { transform: translateY(-10px); }
+}
+
+.cute-robot {
+    position: relative;
+    background: linear-gradient(135deg, #f9a8d4, #ec4899);
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 15px 35px rgba(249, 168, 212, 0.5);
+    animation: robotFloat 3s ease-in-out infinite;
+}
+
+@keyframes robotFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+.robot-eyes {
+    position: absolute;
+    top: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+}
+
+.eye {
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 3s infinite;
+}
+
+@keyframes blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+}
+
+.text-pink {
+    color: #ec4899 !important;
+}
+
+.text-purple {
+    color: #8b5cf6 !important;
+}
+
+.fun-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.message-card {
+    background: rgba(249, 168, 212, 0.1);
+    border: 1px solid rgba(247, 244, 244, 0.3);
+    border-radius: 15px;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+    animation: slideInLeft 0.6s ease-out;
+}
+
+.message-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.message-card:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.message-card:hover {
+    background: rgba(249, 168, 212, 0.2);
+    transform: translateX(5px);
+}
+
+.action-buttons .btn {
+    border-radius: 15px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-buttons .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s;
+}
+
+.action-buttons .btn:hover::before {
+    left: 100%;
+}
+
+.action-buttons .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(249, 168, 212, 0.4);
+}
+
+.cute-tip {
+    animation: slideInUp 0.8s ease-out;
+}
+
+.tip-card {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 15px;
+    padding: 1rem 1.5rem;
+    color: #5b21b6;
+    font-weight: 500;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 떠다니는 아이콘들 */
+.floating-elements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.floating-icon {
+    position: absolute;
+    font-size: 1.5rem;
+    opacity: 0.7;
+    animation: floatIcon 6s ease-in-out infinite;
+}
+
+.icon-1 {
+    top: 10%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.icon-2 {
+    top: 20%;
+    right: 15%;
+    animation-delay: 1s;
+}
+
+.icon-3 {
+    bottom: 30%;
+    left: 8%;
+    animation-delay: 2s;
+}
+
+.icon-4 {
+    bottom: 20%;
+    right: 10%;
+    animation-delay: 3s;
+}
+
+.icon-5 {
+    top: 50%;
+    left: 5%;
+    animation-delay: 4s;
+}
+
+@keyframes floatIcon {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+        opacity: 0.7;
+    }
+    25% {
+        transform: translateY(-20px) rotate(90deg);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-10px) rotate(180deg);
+        opacity: 0.5;
+    }
+    75% {
+        transform: translateY(-15px) rotate(270deg);
+        opacity: 1;
+    }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .error-icon-wrapper {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .floating-number {
+        font-size: 2.5rem;
+    }
+    
+    .cute-robot {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .cute-robot i {
+        font-size: 2rem !important;
+    }
+    
+    .robot-eyes {
+        top: 15px;
+        gap: 10px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        margin: 0 !important;
+    }
+}
+</style>
+
+{% endblock %}
