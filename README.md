@@ -32,12 +32,72 @@ Smart Blog는 OpenAI GPT-4 API를 활용한 AI 기반 블로그 플랫폼으로,
 
 ---
 
-## System Architecture
+## URL 구조
 
-### Core Applications
-- **smartblog/**: 메인 프로젝트 설정 및 URL 라우팅
-- **accounts/**: 사용자 인증, 프로필 관리, 팔로우 시스템
-- **blog/**: 블로그 CRUD, AI 통합, 댓글/좋아요 시스템
+**Main**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| GET | `/` | 메인 페이지 (블로그 목록) |
+| GET | `/admin/` | 관리자 페이지 |
+
+**Blog**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| GET | `/blog/` | 게시글 목록 |
+| GET | `/blog/write/` | 게시글 작성 페이지 |
+| POST | `/blog/write/` | 게시글 작성 처리 |
+| GET | `/blog/<int:pk>/` | 게시글 상세보기 |
+| GET | `/blog/<int:pk>/edit/` | 게시글 수정 페이지 |
+| POST | `/blog/<int:pk>/edit/` | 게시글 수정 처리 |
+| POST | `/blog/<int:pk>/delete/` | 게시글 삭제 |
+
+**Comment**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| POST | `/blog/comment/<int:post_id>/create/` | 댓글 작성 |
+| POST | `/blog/comment/<int:comment_id>/delete/` | 댓글 삭제 |
+| POST | `/blog/comment/<int:comment_id>/update/` | 댓글 수정 |
+| GET | `/blog/comments/<int:post_id>/` | 댓글 목록 조회 |
+
+**Like**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| POST | `/blog/like/<int:post_id>/` | 좋아요 토글 |
+
+**AI Features**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| POST | `/blog/ai/suggest-title/` | AI 제목 추천 |
+| POST | `/blog/ai/complete-content/` | AI 내용 자동완성 |
+| POST | `/blog/ai/suggest-tags/` | AI 태그 추천 |
+| POST | `/blog/ai/generate-summary/` | AI 요약 생성 |
+| GET | `/blog/ai/usage-stats/` | AI 사용량 통계 |
+
+**Account**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| GET | `/accounts/signup/` | 회원가입 페이지 |
+| POST | `/accounts/signup/` | 회원가입 처리 |
+| GET | `/accounts/login/` | 로그인 페이지 |
+| POST | `/accounts/login/` | 로그인 처리 |
+| POST | `/accounts/logout/` | 로그아웃 |
+| GET | `/accounts/profile/` | 내 프로필 |
+| GET | `/accounts/profile/<int:user_id>/` | 사용자 프로필 |
+| GET | `/accounts/profile/update/` | 프로필 수정 페이지 |
+| POST | `/accounts/profile/update/` | 프로필 수정 처리 |
+| GET | `/accounts/password/change/` | 비밀번호 변경 페이지 |
+| POST | `/accounts/password/change/` | 비밀번호 변경 처리 |
+
+**Follow**
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----|-------------|
+| POST | `/accounts/follow/<int:user_id>/` | 팔로우 토글 |
+| GET | `/accounts/followers/<int:user_id>/` | 팔로워 목록 |
+| GET | `/accounts/following/<int:user_id>/` | 팔로잉 목록 |
+
+---
+
+## System Architecture
 
 ### AI Integration
 OpenAI GPT-4 API를 통한 스마트 글쓰기 기능을 제공하며, 제목 추천, 내용 자동완성, 태그 제안, 요약 생성 등의 기능과 사용량 추적 시스템을 포함합니다.
@@ -66,6 +126,196 @@ OpenAI GPT-4 API를 통한 스마트 글쓰기 기능을 제공하며, 제목 �
 - GitHub: [@Hyeoni-729](https://github.com/Hyeoni-729)
 - 전체 시스템 설계 및 개발
 - AI 통합 및 프론트엔드 구현
+
+---
+
+## 핵심 기능 코드 구현
+
+### 1. AI 기반 제목 추천 시스템
+
+**AI 서비스 클래스** (`blog/ai_service.py`)
+```python
+def generate_title_suggestions(self, content: str, count: int = 5) -> List[str]:    
+    if len(content) > 1000:
+        content = content[:1000] + "..."
+    
+    messages = [
+        {
+            "role": "system",
+            "content": "당신은 한국어 블로그 제목을 추천하는 전문가입니다. 매력적이고 클릭하고 싶은 제목을 한국어로 제안해주세요."
+        },
+        {
+            "role": "user",
+            "content": f"""
+다음 글 내용을 바탕으로 {count}개의 매력적인 한국어 제목을 추천해주세요.
+각 제목은 한 줄씩, 번호나 특수문자 없이 작성해주세요.
+
+글 내용: {content}
+"""
+        }
+    ]
+    
+    response = self._make_request(messages, max_tokens=200)
+    titles = [title.strip() for title in response.split('\n') if title.strip()]
+    return titles[:count] if titles else ["AI 추천 제목을 생성할 수 없습니다"]
+```
+
+**AI API 뷰** (`blog/ai_views.py`)
+```python
+@method_decorator([login_required, csrf_exempt], name='dispatch')
+class TitleSuggestionView(View):    
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            content = data.get('content', '').strip()
+            
+            if len(content) < 20:
+                return JsonResponse({'success': False, 'error': '더 많은 내용을 입력해주세요.'})
+            
+            titles = get_title_suggestions(content, count=4)
+            
+            # AI 사용량 로깅
+            AIUsageLog.objects.create(
+                user=request.user,
+                feature_type='title_suggest',
+                tokens_used=len(content) // 4
+            )
+            
+            return JsonResponse({'success': True, 'titles': titles})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+```
+
+### 2. 실시간 좋아요 시스템
+
+**모델 메서드** (`blog/models.py`)
+```python
+class Post(models.Model):
+    # 좋아요 토글 (좋아요/취소)
+    def toggle_like(self, user):
+        if not user.is_authenticated:
+            return False, 0
+        
+        like, created = Like.objects.get_or_create(user=user, post=self)
+        if not created:
+            # 이미 좋아요한 경우 -> 취소
+            like.delete()
+            return False, self.get_like_count()
+        else:
+            # 새로 좋아요
+            return True, self.get_like_count()
+    
+    def get_like_count(self):
+        return self.likes.count()
+```
+
+**AJAX 좋아요 처리** (`blog/views.py`)
+```python
+@method_decorator([login_required, csrf_exempt], name='dispatch')
+class LikeToggleView(View):
+    def post(self, request, post_id):
+        try:
+            post = get_object_or_404(Post, id=post_id)
+            is_liked, like_count = post.toggle_like(request.user)
+            
+            return JsonResponse({
+                'success': True,
+                'is_liked': is_liked,
+                'like_count': like_count
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+```
+
+### 3. 계층형 댓글 시스템
+
+**댓글 모델** (`blog/models.py`)
+```python
+class Comment(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True)  # 대댓글
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+```
+
+**댓글 작성 뷰**
+```python
+@method_decorator([login_required, csrf_exempt], name='dispatch')
+class CommentCreateView(View):
+    def post(self, request, post_id):
+        try:
+            data = json.loads(request.body)
+            post = get_object_or_404(Post, id=post_id)
+            
+            comment = Comment.objects.create(
+                post=post,
+                author=request.user,
+                content=data.get('content'),
+                parent_id=data.get('parent_id')  # 대댓글인 경우
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'comment_id': comment.id,
+                'author': comment.author.username,
+                'content': comment.content,
+                'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M')
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+```
+
+### 4. 팔로우 시스템
+
+**팔로우 모델** (`accounts/models.py`)
+```python
+class CustomUser(AbstractUser):
+    def toggle_follow(self, user):
+        if user == self or not user:
+            return False, 0
+        
+        follow, created = Follow.objects.get_or_create(follower=self, following=user)
+        if not created:
+            # 이미 팔로우한 경우 -> 언팔로우
+            follow.delete()
+            return False, user.get_follower_count()
+        else:
+            # 새로 팔로우
+            return True, user.get_follower_count()
+    
+    def get_follower_count(self):
+        return self.followers.count()
+```
+
+### 5. 게시글 검색 및 필터링
+
+**고급 검색 쿼리** (`blog/views.py`)
+```python
+def get_queryset(self):
+    queryset = Post.objects.select_related("author").prefetch_related("tags", "likes").annotate(likes_count=Count('likes'))
+    
+    # 검색 기능
+    search_query = self.request.GET.get("search")
+    if search_query:
+        queryset = queryset.filter(
+            Q(title__icontains=search_query) |
+            Q(content__icontains=search_query) |
+            Q(tags__name__icontains=search_query)
+        ).distinct()
+    
+    # 정렬 옵션
+    sort_by = self.request.GET.get("sort", "latest")
+    if sort_by == "likes":
+        queryset = queryset.order_by("-likes_count", "-created_at")
+    elif sort_by == "views":
+        queryset = queryset.order_by("-views", "-created_at")
+    
+    return queryset
+```
 
 ---
 
